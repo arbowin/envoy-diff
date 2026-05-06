@@ -1,27 +1,27 @@
-"""Validator module for envoy-diff.
+"""Validation helpers for parsed .env key/value pairs."""
 
-Provides utilities to validate parsed .env file contents,
-checking for suspicious or malformed entries.
-"""
-
-from __future__ import annotations
-
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+_VALID_KEY_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+_SHELL_SPECIAL_RE = re.compile(r'[\$`!;&|<>]')
 
-class ValidationError(Exception):
-    """Raised when a validation rule encounters a fatal issue."""
+
+class ValidationError(ValueError):
+    """Raised for hard validation failures."""
 
 
 @dataclass
 class ValidationWarning:
+    """A non-fatal issue found during validation."""
     key: str
     message: str
 
 
 @dataclass
 class ValidationResult:
+    """Aggregated result of validating an env mapping."""
     warnings: List[ValidationWarning] = field(default_factory=list)
 
     @property
@@ -32,34 +32,39 @@ class ValidationResult:
         self.warnings.append(ValidationWarning(key=key, message=message))
 
 
-_SUSPICIOUS_CHARS = set('<>|;&`$(){}[]')
+def is_valid(key: str) -> bool:
+    """Return True if *key* is a well-formed environment variable name."""
+    return bool(_VALID_KEY_RE.match(key))
+
+
+def add(result: ValidationResult, key: str, message: str) -> None:
+    """Convenience wrapper to add a warning to *result*."""
+    result.add(key, message)
 
 
 def validate_env(env: Dict[str, Optional[str]]) -> ValidationResult:
-    """Validate a parsed env dictionary and return a ValidationResult.
+    """Validate all keys and values in *env*, returning a ValidationResult.
 
     Checks performed:
-    - Keys must be non-empty and contain only alphanumeric characters or underscores.
-    - Values containing shell-special characters are flagged.
-    - Keys that start with a digit are flagged.
+    - Key contains a hyphen (not POSIX-portable).
+    - Key contains whitespace.
+    - Key starts with a digit.
+    - Key is otherwise non-standard (fails _VALID_KEY_RE).
+    - Value contains unquoted shell-special characters.
     """
     result = ValidationResult()
 
     for key, value in env.items():
-        if not key:
-            result.add(key, "Empty key detected.")
-            continue
+        if re.search(r'-', key):
+            result.add(key, "Key contains a hyphen; not portable across all shells.")
+        elif re.search(r'\s', key):
+            result.add(key, "Key contains whitespace; this is invalid.")
+        elif re.match(r'^\d', key):
+            result.add(key, "Key starts with a digit; this is invalid.")
+        elif not is_valid(key):
+            result.add(key, "Key contains non-standard characters.")
 
-        if not all(c.isalnum() or c == '_' for c in key):
-            result.add(key, f"Key '{key}' contains non-alphanumeric/underscore characters.")
-
-        if key[0].isdigit():
-            result.add(key, f"Key '{key}' starts with a digit.")
-
-        if value is not None:
-            found = [c for c in value if c in _SUSPICIOUS_CHARS]
-            if found:
-                chars = ', '.join(repr(c) for c in sorted(set(found)))
-                result.add(key, f"Value for '{key}' contains suspicious characters: {chars}.")
+        if value is not None and _SHELL_SPECIAL_RE.search(value):
+            result.add(key, "Value contains shell-special characters that may need quoting.")
 
     return result
