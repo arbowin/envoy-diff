@@ -43,6 +43,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _load_env_files(source: Path, target: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Parse both env files, raising SystemExit with a helpful message on failure.
+
+    Returns a tuple of (source_env, target_env) dictionaries.
+    Raises EnvParseError or FileNotFoundError on failure (callers should handle these).
+    """
+    source_env = parse_env_file(source)
+    target_env = parse_env_file(target)
+    return source_env, target_env
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -51,12 +62,11 @@ def main(argv: list[str] | None = None) -> int:
     target_name = args.target_name or args.target.name
 
     try:
-        source_env = parse_env_file(args.source)
-        target_env = parse_env_file(args.target)
-    except EnvParseError as exc:
+        source_env, target_env = _load_env_files(args.source, args.target)
+    except FileNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
-    except FileNotFoundError as exc:
+    except EnvParseError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
