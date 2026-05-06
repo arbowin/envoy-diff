@@ -49,6 +49,43 @@ def write_report(
         target.write("\n")
 
 
+def write_report_multi(
+    result: DiffResult,
+    formats: list[OutputFormat],
+    output_dir: Path,
+    stem: str = "report",
+) -> list[Path]:
+    """Write diff reports in multiple formats to a directory.
+
+    Each format is written to a separate file named ``<stem>.<ext>``
+    inside *output_dir*.
+
+    Args:
+        result: The diff result to report on.
+        formats: List of output formats to generate.
+        output_dir: Directory in which to place the report files.
+        stem: Base filename (without extension) for each report file.
+
+    Returns:
+        List of paths to the files that were written.
+
+    Raises:
+        ReportError: If any output file cannot be written.
+    """
+    _EXT = {
+        OutputFormat.TEXT: "txt",
+        OutputFormat.JSON: "json",
+        OutputFormat.MARKDOWN: "md",
+    }
+    written: list[Path] = []
+    for fmt in formats:
+        ext = _EXT.get(fmt, fmt.value)
+        path = output_dir / f"{stem}.{ext}"
+        write_report(result, fmt=fmt, output_path=path)
+        written.append(path)
+    return written
+
+
 def report_to_string(
     result: DiffResult,
     fmt: OutputFormat = OutputFormat.TEXT,
