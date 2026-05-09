@@ -10,6 +10,7 @@ from envoy_diff.lint_runner import LintRunError, LintSeverity, run_lint
 
 
 def write_env(tmp_path: Path, name: str, content: str) -> str:
+    """Write a .env file with dedented content and return its path as a string."""
     p = tmp_path / name
     p.write_text(textwrap.dedent(content), encoding="utf-8")
     return str(p)
@@ -68,3 +69,11 @@ def test_empty_paths_returns_empty_report():
     assert report.all_passed
     assert report.results == {}
     assert report.summary() == ""
+
+
+def test_run_lint_error_includes_path():
+    """LintRunError raised for a missing file should include the offending path."""
+    bad_path = "/nonexistent/path/.env"
+    with pytest.raises(LintRunError) as exc_info:
+        run_lint([bad_path])
+    assert bad_path in str(exc_info.value)
