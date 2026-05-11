@@ -6,6 +6,8 @@ import json
 
 from envoy_diff.baseline import BaselineComparison
 
+_SUPPORTED_FORMATS = frozenset({"text", "json", "markdown", "md"})
+
 
 def _text_lines(cmp: BaselineComparison) -> list[str]:
     lines: list[str] = ["=== Baseline Comparison ==="]
@@ -59,8 +61,21 @@ def format_baseline_markdown(cmp: BaselineComparison) -> str:
 
 
 def render_baseline(cmp: BaselineComparison, fmt: str = "text") -> str:
-    """Render *cmp* in the requested format (text/json/markdown)."""
+    """Render *cmp* in the requested format (text/json/markdown).
+
+    Args:
+        cmp: The :class:`BaselineComparison` to render.
+        fmt: Output format – one of ``"text"``, ``"json"``, ``"markdown"``,
+            or ``"md"``.
+
+    Raises:
+        ValueError: If *fmt* is not a recognised format string.
+    """
     fmt = fmt.lower()
+    if fmt not in _SUPPORTED_FORMATS:
+        raise ValueError(
+            f"Unknown format {fmt!r}. Supported formats: {sorted(_SUPPORTED_FORMATS)}"
+        )
     if fmt == "json":
         return format_baseline_json(cmp)
     if fmt in ("markdown", "md"):
