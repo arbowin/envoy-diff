@@ -5,6 +5,8 @@ from typing import List
 
 from envoy_diff.scorer import ScoreResult
 
+_SUPPORTED_FORMATS = ("text", "json", "markdown", "md")
+
 
 def _text_lines(result: ScoreResult) -> List[str]:
     lines = [
@@ -66,10 +68,14 @@ def render_score(result: ScoreResult, fmt: str = "text") -> str:
 
     Args:
         result: Score result to render.
-        fmt: One of ``'text'``, ``'json'``, or ``'markdown'``.
+        fmt: One of ``'text'``, ``'json'``, or ``'markdown'`` (``'md'`` is
+            also accepted as an alias for ``'markdown'``).
+
+    Returns:
+        Formatted string representation of *result*.
 
     Raises:
-        ValueError: If *fmt* is not recognised.
+        ValueError: If *fmt* is not one of the supported format strings.
     """
     fmt = fmt.lower()
     if fmt == "text":
@@ -78,4 +84,7 @@ def render_score(result: ScoreResult, fmt: str = "text") -> str:
         return format_score_json(result)
     if fmt in ("markdown", "md"):
         return format_score_markdown(result)
-    raise ValueError(f"Unknown format: {fmt!r}. Choose 'text', 'json', or 'markdown'.")
+    supported = ", ".join(f"{f!r}" for f in _SUPPORTED_FORMATS)
+    raise ValueError(
+        f"Unknown format: {fmt!r}. Supported formats are: {supported}."
+    )
