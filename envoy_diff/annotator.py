@@ -34,6 +34,20 @@ class AnnotatedResult:
     def by_status(self, status: str) -> List[Annotation]:
         return [a for a in self.annotations if a.status == status]
 
+    def summary(self) -> str:
+        """Return a short human-readable summary of the annotation counts."""
+        missing_target = len(self.by_status("missing_in_target"))
+        missing_source = len(self.by_status("missing_in_source"))
+        mismatched = len(self.by_status("mismatch"))
+        parts = []
+        if missing_target:
+            parts.append(f"{missing_target} missing in target")
+        if missing_source:
+            parts.append(f"{missing_source} missing in source")
+        if mismatched:
+            parts.append(f"{mismatched} mismatched")
+        return ", ".join(parts) if parts else "no differences found"
+
 
 _HINTS = {
     "missing_in_target": "Key exists in source but is absent from target — add it to keep environments in sync.",
